@@ -1,12 +1,15 @@
 """Main module."""
 
+import redis
+import json
+import time
+import re
+from enum import Enum
+
 import commlib_py.transports.redis as rcomm
 import commlib_py.transports.amqp as acomm
 from commlib_py.logger import Logger
-import redis
-import json
-import re
-from enum import Enum
+
 
 def camelcase_to_snakecase(name):
     s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
@@ -23,7 +26,7 @@ class InterfaceProtocolType(Enum):
     REDIS = 2
 
 
-class KeyValueMem(object):
+class DerpMe(object):
     """
 
     KeyVal Mem mechanism. Implemented using Redis as the backend db.
@@ -32,11 +35,12 @@ class KeyValueMem(object):
         - List Key-Val storage. Where key points to a list
     """
 
-    def __init__(self, mem_conn_params,
+    def __init__(self, mem_conn_params=None,
                  iface_protocol=InterfaceProtocolType.REDIS,
                  broker_conn_params=None,
                  list_size=10, namespace='device'):
-        self.mem_conn_params = mem_conn_params
+        self.mem_conn_params = mem_conn_params if mem_conn_params is not None \
+            else RedisMemParams()
         self.l_size = list_size
         self.namespace = namespace
         self.node_name = camelcase_to_snakecase(self.__class__.__name__)
@@ -52,7 +56,7 @@ class KeyValueMem(object):
 
         if iface_protocol == InterfaceProtocolType.AMQP:
             comm = acomm
-        elif iface_protocol == InterfaceProtocolType.AMQP:
+        elif iface_protocol == InterfaceProtocolType.REDIS:
             comm = rcomm
         else:
             raise TypeError()
@@ -60,25 +64,25 @@ class KeyValueMem(object):
         self._conn_params = broker_conn_params if broker_conn_params \
             is not None else comm.ConnectionParameters()
 
-        self._get_rpc = acomm.RPCServer(conn_params=self._conn_params,
+        self._get_rpc = comm.RPCServer(conn_params=self._conn_params,
                                         rpc_name=self._get_uri,
                                         on_request=self._callback_get)
-        self._set_rpc = acomm.RPCServer(conn_params=self._conn_params,
+        self._set_rpc = comm.RPCServer(conn_params=self._conn_params,
                                         rpc_name=self._set_uri,
                                         on_request=self._callback_set)
-        self._mget_rpc = acomm.RPCServer(conn_params=self._conn_params,
+        self._mget_rpc = comm.RPCServer(conn_params=self._conn_params,
                                          rpc_name=self._mget_uri,
                                          on_request=self._callback_mget)
-        self._mset_rpc = acomm.RPCServer(conn_params=self._conn_params,
+        self._mset_rpc = comm.RPCServer(conn_params=self._conn_params,
                                          rpc_name=self._mset_uri,
                                          on_request=self._callback_mset)
-        self._lget_rpc = acomm.RPCServer(conn_params=self._conn_params,
+        self._lget_rpc = comm.RPCServer(conn_params=self._conn_params,
                                          rpc_name=self._lget_uri,
                                          on_request=self._callback_lget)
-        self._lset_rpc = acomm.RPCServer(conn_params=self._conn_params,
+        self._lset_rpc = comm.RPCServer(conn_params=self._conn_params,
                                          rpc_name=self._lset_uri,
                                          on_request=self._callback_lset)
-        self._flush_rpc = acomm.RPCServer(conn_params=self._conn_params,
+        self._flush_rpc = comm.RPCServer(conn_params=self._conn_params,
                                           rpc_name=self._flush_uri,
                                           on_request=self._callback_lset)
 
@@ -225,7 +229,16 @@ class KeyValueMem(object):
         return resp
 
     def init_redis(self):
-        self.redis = redis.Redis(host=self.mem_conn_params.redis_host,
-                                 port=self.mem_conn_params.redis_port,
+        self.redis = redis.Redis(host=self.mem_conn_params.host,
+                                 port=self.mem_conn_params.port,
                                  db=self.mem_conn_params.db,
                                  decode_responses=True)
+
+    def run_forever(self):
+        while True:
+            time.sleep(0.001)
+
+
+if __name__ == '__main__':
+    derp = DerpMe()
+    derp.run_forever()
