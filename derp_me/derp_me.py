@@ -166,7 +166,8 @@ class DerpMe(object):
             vals = self.redis.mget(keys)
             resp['vals'] = vals
         except Exception as e:
-            pass
+            resp['status'] = 0
+            resp['error'] = str(e)
         return resp
 
     def _callback_lget(self, msg, meta):
