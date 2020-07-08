@@ -44,7 +44,7 @@ class DerpMe(object):
         self.l_size = list_size
         self.namespace = namespace
         self.node_name = camelcase_to_snakecase(self.__class__.__name__)
-        self.logger = Logger(namespace=self.node_name)
+        self.logger = Logger(namespace=self.node_name, debug=True)
 
         self._get_uri = '{}.{}.{}'.format(self.namespace, 'derpme', 'get')
         self._set_uri = '{}.{}.{}'.format(self.namespace, 'derpme', 'set')
@@ -65,26 +65,26 @@ class DerpMe(object):
             is not None else comm.ConnectionParameters()
 
         self._get_rpc = comm.RPCServer(conn_params=self._conn_params,
-                                        rpc_name=self._get_uri,
-                                        on_request=self._callback_get)
+                                       rpc_name=self._get_uri,
+                                       on_request=self._callback_get)
         self._set_rpc = comm.RPCServer(conn_params=self._conn_params,
-                                        rpc_name=self._set_uri,
-                                        on_request=self._callback_set)
+                                       rpc_name=self._set_uri,
+                                       on_request=self._callback_set)
         self._mget_rpc = comm.RPCServer(conn_params=self._conn_params,
-                                         rpc_name=self._mget_uri,
-                                         on_request=self._callback_mget)
+                                        rpc_name=self._mget_uri,
+                                        on_request=self._callback_mget)
         self._mset_rpc = comm.RPCServer(conn_params=self._conn_params,
-                                         rpc_name=self._mset_uri,
-                                         on_request=self._callback_mset)
+                                        rpc_name=self._mset_uri,
+                                        on_request=self._callback_mset)
         self._lget_rpc = comm.RPCServer(conn_params=self._conn_params,
-                                         rpc_name=self._lget_uri,
-                                         on_request=self._callback_lget)
+                                        rpc_name=self._lget_uri,
+                                        on_request=self._callback_lget)
         self._lset_rpc = comm.RPCServer(conn_params=self._conn_params,
-                                         rpc_name=self._lset_uri,
-                                         on_request=self._callback_lset)
+                                        rpc_name=self._lset_uri,
+                                        on_request=self._callback_lset)
         self._flush_rpc = comm.RPCServer(conn_params=self._conn_params,
-                                          rpc_name=self._flush_uri,
-                                          on_request=self._callback_lset)
+                                         rpc_name=self._flush_uri,
+                                         on_request=self._callback_flush)
 
         self.init_redis()
         self._init_broker_endpoints()
@@ -96,6 +96,7 @@ class DerpMe(object):
         self._lset_rpc.run()
         self._mget_rpc.run()
         self._mset_rpc.run()
+        self._flush_rpc.run()
 
     def _callback_get(self, msg, meta):
         resp = {
@@ -107,6 +108,7 @@ class DerpMe(object):
             resp['error'] = 'Missing <key> parameter'
             resp['status'] = 0
         key = msg['key']
+        self.logger.debug('GET <{}>'.format(key))
         val = self.redis.get(key)
         resp['val'] = val
         return resp
@@ -126,6 +128,7 @@ class DerpMe(object):
             return resp
         key = msg['key']
         val = msg['val']
+        self.logger.debug('SET <{},{}>'.format(key, val))
         self.redis.set(key, val)
         return resp
 
@@ -144,6 +147,7 @@ class DerpMe(object):
             return resp
         keys = msg['keys']
         vals = msg['vals']
+        self.logger.debug('MSET <{},{}>'.format(keys, vals))
         _d = {}
         for i in range(len(keys)):
             _d[keys[i]] = vals[i]
@@ -162,6 +166,7 @@ class DerpMe(object):
             resp['error'] = 'Missing <keys> parameter'
             return resp
         keys = msg['keys']
+        self.logger.debug('MGET <{}>'.format(keys))
         try:
             vals = self.redis.mget(keys)
             resp['vals'] = vals
@@ -196,7 +201,9 @@ class DerpMe(object):
         # Reverse indexing
         r_start = -1 * _from
         r_stop = -1 * _to
+        self.logger.debug('LGET <{},[{},{}]>'.format(_key, _from, _to))
         res = self.redis.lrange(_key, r_start, r_stop)
+        print('aaaa')
         resp['val'] = res
         return resp
 
@@ -215,6 +222,7 @@ class DerpMe(object):
             return resp
         key = msg['key']
         vals = msg['vals']
+        self.logger.debug('LSET <{},{}>'.format(key, vals))
         #self.log("LSET - key={}, vals={}".format(key, vals))
         self.redis.lpush(key, *vals)
         self.redis.ltrim(key, 0, self.l_size - 1)
@@ -226,7 +234,11 @@ class DerpMe(object):
             'error': ''
         }
         self.logger.debug('Flushing db...')
-        self.redis.flushdb()
+        try:
+            self.redis.flushdb()
+        except Exception as exc:
+            resp['status'] = 0
+            resp['error'] = str(exc)
         return resp
 
     def init_redis(self):
