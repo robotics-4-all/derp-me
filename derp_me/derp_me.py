@@ -198,12 +198,17 @@ class DerpMe(object):
         _from = msg['l_from']
         _to = msg['l_to']
         _key = msg['key']
+
+        if self.redis.llen(_key) == 0:
+            # Check if list exists: https://redis.io/commands/llen
+            resp['status'] = 0
+            resp['error'] = 'List <{}> does not exist'.format(_key)
+            return resp
         # Reverse indexing
         r_start = -1 * _from
         r_stop = -1 * _to
         self.logger.debug('LGET <{},[{},{}]>'.format(_key, _from, _to))
         res = self.redis.lrange(_key, r_start, r_stop)
-        print('aaaa')
         resp['val'] = res
         return resp
 
