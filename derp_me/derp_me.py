@@ -209,6 +209,7 @@ class DerpMe(object):
         r_stop = -1 * _to
         self.logger.debug('LGET <{},[{},{}]>'.format(_key, _from, _to))
         res = self.redis.lrange(_key, r_start, r_stop)
+        res = [json.loads(x) for x in res]
         resp['val'] = res
         return resp
 
@@ -227,6 +228,7 @@ class DerpMe(object):
             return resp
         key = msg['key']
         vals = msg['vals']
+        vals = [json.dumps(x) for x in vals]
         self.logger.debug('LSET <{},{}>'.format(key, vals))
         #self.log("LSET - key={}, vals={}".format(key, vals))
         self.redis.lpush(key, *vals)
@@ -258,5 +260,6 @@ class DerpMe(object):
 
 
 if __name__ == '__main__':
-    derp = DerpMe()
+    derp = DerpMe(mem_conn_params=RedisMemParams(host='localhost', port=6379, db=1),
+                  broker_conn_params=rcomm.ConnectionParameters(host='localhost', port=6379))
     derp.run_forever()
