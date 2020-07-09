@@ -7,7 +7,7 @@ from .derp_me import InterfaceProtocolType, RedisMemParams
 
 class DerpMeClient(object):
     def __init__(self, iface_protocol=InterfaceProtocolType.REDIS,
-                 broker_conn_params=None, namespace='device'):
+                 conn_params=None, namespace='device'):
         self.namespace = namespace
         self.logger = Logger(namespace=self.__class__.__name__)
 
@@ -17,7 +17,7 @@ class DerpMeClient(object):
             comm = rcomm
         else:
             raise TypeError()
-        self._conn_params = broker_conn_params if broker_conn_params \
+        self._conn_params = conn_params if conn_params \
             is not None else comm.ConnectionParameters()
 
         self._get_uri = '{}.{}.{}'.format(self.namespace, 'derpme', 'get')
