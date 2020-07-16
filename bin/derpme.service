@@ -1,0 +1,17 @@
+[Unit]
+Description=Service for DerpMe.
+# After=multi-user.target
+After=multi-user.target network.target redis-server.service
+
+[Service]
+User=pi
+Type=idle
+ExecStart=/usr/bin/python3 -u derpme.py
+WorkingDirectory=/home/pi/v2/derp-me/bin
+StandardOutput=inherit
+StandardError=inherit
+Restart=always
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target

@@ -257,9 +257,3 @@ class DerpMe(object):
     def run_forever(self):
         while True:
             time.sleep(0.001)
-
-
-if __name__ == '__main__':
-    derp = DerpMe(mem_conn_params=RedisMemParams(host='localhost', port=6379, db=1),
-                  broker_conn_params=rcomm.ConnectionParameters(host='localhost', port=6379))
-    derp.run_forever()
