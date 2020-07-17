@@ -6,9 +6,8 @@ import time
 import re
 from enum import Enum
 
-import commlib_py.transports.redis as rcomm
-import commlib_py.transports.amqp as acomm
 from commlib_py.logger import Logger
+import commlib_py.transports.redis as rcomm
 
 
 def camelcase_to_snakecase(name):
@@ -16,7 +15,7 @@ def camelcase_to_snakecase(name):
     return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
 
 
-class RedisMemParams(rcomm.ConnectionParameters):
+class RedisMemParams(rcomm.TCPConnectionParameters):
     def __init___(self, *args, **kwargs):
         super(RedisMemParams, self).__init__(*args, **kwargs)
 
@@ -55,9 +54,9 @@ class DerpMe(object):
         self._flush_uri = '{}.{}.{}'.format(self.namespace, 'derpme', 'flush')
 
         if iface_protocol == InterfaceProtocolType.AMQP:
-            comm = acomm
+            import commlib_py.transports.amqp as comm
         elif iface_protocol == InterfaceProtocolType.REDIS:
-            comm = rcomm
+            import commlib_py.transports.redis as comm
         else:
             raise TypeError()
 
@@ -65,7 +64,7 @@ class DerpMe(object):
             is not None else comm.ConnectionParameters()
 
         self._get_rpc = comm.RPCServer(conn_params=self._conn_params,
-                                       rpc_name=self._get_uri,
+                                       pc_name=self._get_uri,
                                        on_request=self._callback_get)
         self._set_rpc = comm.RPCServer(conn_params=self._conn_params,
                                        rpc_name=self._set_uri,
