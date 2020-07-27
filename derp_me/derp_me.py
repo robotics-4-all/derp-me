@@ -15,7 +15,7 @@ def camelcase_to_snakecase(name):
     return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
 
 
-class RedisMemParams(rcomm.TCPConnectionParameters):
+class RedisMemParams(rcomm.ConnectionParameters):
     def __init___(self, *args, **kwargs):
         super(RedisMemParams, self).__init__(*args, **kwargs)
 
@@ -64,7 +64,7 @@ class DerpMe(object):
             is not None else comm.ConnectionParameters()
 
         self._get_rpc = comm.RPCServer(conn_params=self._conn_params,
-                                       pc_name=self._get_uri,
+                                       rpc_name=self._get_uri,
                                        on_request=self._callback_get)
         self._set_rpc = comm.RPCServer(conn_params=self._conn_params,
                                        rpc_name=self._set_uri,
