@@ -9,7 +9,7 @@ import re
 from enum import Enum
 
 from derp_me import DerpMe, RedisMemParams
-import commlib_py.transports.redis as rcomm
+import commlib.transports.redis as rcomm
 
 
 if __name__ == '__main__':
