@@ -1,6 +1,6 @@
-import commlib_py.transports.redis as rcomm
-import commlib_py.transports.amqp as acomm
-from commlib_py.logger import Logger
+import commlib.transports.redis as rcomm
+import commlib.transports.amqp as acomm
+from commlib.logger import Logger
 
 from .derp_me import InterfaceProtocolType, RedisMemParams
 

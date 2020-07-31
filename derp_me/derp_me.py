@@ -6,8 +6,8 @@ import time
 import re
 from enum import Enum
 
-from commlib_py.logger import Logger
-import commlib_py.transports.redis as rcomm
+from commlib.logger import Logger
+import commlib.transports.redis as rcomm
 
 
 def camelcase_to_snakecase(name):
@@ -54,34 +54,34 @@ class DerpMe(object):
         self._flush_uri = '{}.{}.{}'.format(self.namespace, 'derpme', 'flush')
 
         if iface_protocol == InterfaceProtocolType.AMQP:
-            import commlib_py.transports.amqp as comm
+            import commlib.transports.amqp as comm
         elif iface_protocol == InterfaceProtocolType.REDIS:
-            import commlib_py.transports.redis as comm
+            import commlib.transports.redis as comm
         else:
             raise TypeError()
 
         self._conn_params = broker_conn_params if broker_conn_params \
             is not None else comm.ConnectionParameters()
 
-        self._get_rpc = comm.RPCServer(conn_params=self._conn_params,
+        self._get_rpc = comm.RPCService(conn_params=self._conn_params,
                                        rpc_name=self._get_uri,
                                        on_request=self._callback_get)
-        self._set_rpc = comm.RPCServer(conn_params=self._conn_params,
+        self._set_rpc = comm.RPCService(conn_params=self._conn_params,
                                        rpc_name=self._set_uri,
                                        on_request=self._callback_set)
-        self._mget_rpc = comm.RPCServer(conn_params=self._conn_params,
+        self._mget_rpc = comm.RPCService(conn_params=self._conn_params,
                                         rpc_name=self._mget_uri,
                                         on_request=self._callback_mget)
-        self._mset_rpc = comm.RPCServer(conn_params=self._conn_params,
+        self._mset_rpc = comm.RPCService(conn_params=self._conn_params,
                                         rpc_name=self._mset_uri,
                                         on_request=self._callback_mset)
-        self._lget_rpc = comm.RPCServer(conn_params=self._conn_params,
+        self._lget_rpc = comm.RPCService(conn_params=self._conn_params,
                                         rpc_name=self._lget_uri,
                                         on_request=self._callback_lget)
-        self._lset_rpc = comm.RPCServer(conn_params=self._conn_params,
+        self._lset_rpc = comm.RPCService(conn_params=self._conn_params,
                                         rpc_name=self._lset_uri,
                                         on_request=self._callback_lset)
-        self._flush_rpc = comm.RPCServer(conn_params=self._conn_params,
+        self._flush_rpc = comm.RPCService(conn_params=self._conn_params,
                                          rpc_name=self._flush_uri,
                                          on_request=self._callback_flush)
 
