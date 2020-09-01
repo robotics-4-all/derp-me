@@ -92,7 +92,7 @@ class DerpMe(object):
             self.__class__.__name__, transport_type=TransportType.REDIS,
             transport_connection_params=self._local_conn_params,
             remote_logger=False,
-            debug=True
+            debug=False
         )
         self._get_rpc = self._local_node.create_rpc(
             rpc_name=self._get_uri, on_request=self._callback_get)
