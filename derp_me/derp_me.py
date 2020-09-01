@@ -4,10 +4,10 @@ import redis
 import json
 import time
 import re
-from enum import Enum
+from enum import IntEnum
 
-from commlib.logger import Logger
-import commlib.transports.redis as rcomm
+from commlib.logger import RemoteLogger
+from commlib.node import Node, TransportType
 
 
 def camelcase_to_snakecase(name):
@@ -15,14 +15,8 @@ def camelcase_to_snakecase(name):
     return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
 
 
-class RedisMemParams(rcomm.ConnectionParameters):
-    def __init___(self, *args, **kwargs):
-        super(RedisMemParams, self).__init__(*args, **kwargs)
-
-
-class InterfaceProtocolType(Enum):
-    AMQP = 1
-    REDIS = 2
+class LocalMemType(IntEnum):
+    REDIS = 1
 
 
 class DerpMe(object):
@@ -34,16 +28,20 @@ class DerpMe(object):
         - List Key-Val storage. Where key points to a list
     """
 
-    def __init__(self, mem_conn_params=None,
-                 iface_protocol=InterfaceProtocolType.REDIS,
-                 broker_conn_params=None,
-                 list_size=10, namespace='device'):
-        self.mem_conn_params = mem_conn_params if mem_conn_params is not None \
-            else RedisMemParams()
+    def __init__(self,
+                 local_mem: LocalMemType = LocalMemType.REDIS,
+                 local_broker: TransportType = TransportType.REDIS,
+                 local_broker_params=None,
+                 remote_broker: TransportType = TransportType.AMQP,
+                 remote_broker_params=None,
+                 list_size: int = 10,
+                 namespace: str = 'device'):
+        if local_mem == LocalMemType.REDIS:
+            from commlib.transports.redis import ConnectionParameters
+            self.mem_conn_params = ConnectionParameters()
         self.l_size = list_size
         self.namespace = namespace
         self.node_name = camelcase_to_snakecase(self.__class__.__name__)
-        self.logger = Logger(namespace=self.node_name, debug=True)
 
         self._get_uri = '{}.{}.{}'.format(self.namespace, 'derpme', 'get')
         self._set_uri = '{}.{}.{}'.format(self.namespace, 'derpme', 'set')
@@ -53,42 +51,63 @@ class DerpMe(object):
         self._lset_uri = '{}.{}.{}'.format(self.namespace, 'derpme', 'lset')
         self._flush_uri = '{}.{}.{}'.format(self.namespace, 'derpme', 'flush')
 
-        if iface_protocol == InterfaceProtocolType.AMQP:
+        if local_broker == TransportType.AMQP:
             import commlib.transports.amqp as comm
-        elif iface_protocol == InterfaceProtocolType.REDIS:
+        elif local_broker == TransportType.REDIS:
             import commlib.transports.redis as comm
         else:
             raise TypeError()
 
-        self._conn_params = broker_conn_params if broker_conn_params \
+        self._local_conn_params = local_broker_params if local_broker_params \
             is not None else comm.ConnectionParameters()
 
-        self._get_rpc = comm.RPCService(conn_params=self._conn_params,
+        self._get_rpc = comm.RPCService(conn_params=self._local_conn_params,
                                        rpc_name=self._get_uri,
                                        on_request=self._callback_get)
-        self._set_rpc = comm.RPCService(conn_params=self._conn_params,
+        self._set_rpc = comm.RPCService(conn_params=self._local_conn_params,
                                        rpc_name=self._set_uri,
                                        on_request=self._callback_set)
-        self._mget_rpc = comm.RPCService(conn_params=self._conn_params,
+        self._mget_rpc = comm.RPCService(conn_params=self._local_conn_params,
                                         rpc_name=self._mget_uri,
                                         on_request=self._callback_mget)
-        self._mset_rpc = comm.RPCService(conn_params=self._conn_params,
+        self._mset_rpc = comm.RPCService(conn_params=self._local_conn_params,
                                         rpc_name=self._mset_uri,
                                         on_request=self._callback_mset)
-        self._lget_rpc = comm.RPCService(conn_params=self._conn_params,
+        self._lget_rpc = comm.RPCService(conn_params=self._local_conn_params,
                                         rpc_name=self._lget_uri,
                                         on_request=self._callback_lget)
-        self._lset_rpc = comm.RPCService(conn_params=self._conn_params,
+        self._lset_rpc = comm.RPCService(conn_params=self._local_conn_params,
                                         rpc_name=self._lset_uri,
                                         on_request=self._callback_lset)
-        self._flush_rpc = comm.RPCService(conn_params=self._conn_params,
+        self._flush_rpc = comm.RPCService(conn_params=self._local_conn_params,
                                          rpc_name=self._flush_uri,
                                          on_request=self._callback_flush)
 
         self.init_redis()
-        self._init_broker_endpoints()
+        self._init_local_endpoints()
 
-    def _init_broker_endpoints(self):
+    def _init_local_endpoints(self):
+        thing_id = self._local_conn_params.credentials.username
+        self._local_node = Node(
+            self.__class__.__name__, transport_type=TransportType.REDIS,
+            transport_connection_params=self._local_conn_params,
+            remote_logger=False,
+            debug=True
+        )
+        self._get_rpc = self._local_node.create_rpc(
+            rpc_name=self._get_uri, on_request=self._callback_get)
+        self._set_rpc = self._local_node.create_rpc(
+            rpc_name=self._set_uri, on_request=self._callback_set)
+        self._lget_rpc = self._local_node.create_rpc(
+            rpc_name=self._lget_uri, on_request=self._callback_lget)
+        self._lset_rpc = self._local_node.create_rpc(
+            rpc_name=self._lset_uri, on_request=self._callback_lset)
+        self._mget_rpc = self._local_node.create_rpc(
+            rpc_name=self._mget_uri, on_request=self._callback_mget)
+        self._mset_rpc = self._local_node.create_rpc(
+            rpc_name=self._mset_uri, on_request=self._callback_mset)
+        self._flush_rpc = self._local_node.create_rpc(
+            rpc_name=self._flush_uri, on_request=self._callback_flush)
         self._get_rpc.run()
         self._set_rpc.run()
         self._lget_rpc.run()
@@ -150,7 +169,6 @@ class DerpMe(object):
         _d = {}
         for i in range(len(keys)):
             _d[keys[i]] = vals[i]
-        #self.log('MSET: {}'.format(_d))
         self.redis.mset(_d)
         return resp
 
@@ -229,7 +247,6 @@ class DerpMe(object):
         vals = msg['vals']
         vals = [json.dumps(x) for x in vals]
         self.logger.debug('LSET <{},{}>'.format(key, vals))
-        #self.log("LSET - key={}, vals={}".format(key, vals))
         self.redis.lpush(key, *vals)
         self.redis.ltrim(key, 0, self.l_size - 1)
         return resp
