@@ -2,18 +2,18 @@ import commlib.transports.redis as rcomm
 import commlib.transports.amqp as acomm
 from commlib.logger import Logger
 
-from .derp_me import InterfaceProtocolType, RedisMemParams
+from .derp_me import TransportType
 
 
 class DerpMeClient(object):
-    def __init__(self, iface_protocol=InterfaceProtocolType.REDIS,
+    def __init__(self, iface_protocol=TransportType.REDIS,
                  conn_params=None, namespace='device'):
         self.namespace = namespace
         self.logger = Logger(namespace=self.__class__.__name__)
 
-        if iface_protocol == InterfaceProtocolType.AMQP:
+        if iface_protocol == TransportType.AMQP:
             comm = acomm
-        elif iface_protocol == InterfaceProtocolType.REDIS:
+        elif iface_protocol == TransportType.REDIS:
             comm = rcomm
         else:
             raise TypeError()
