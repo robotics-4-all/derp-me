@@ -94,6 +94,8 @@ class DerpMe(object):
             remote_logger=False,
             debug=False
         )
+        self.logger = self._local_node.get_logger()
+
         self._get_rpc = self._local_node.create_rpc(
             rpc_name=self._get_uri, on_request=self._callback_get)
         self._set_rpc = self._local_node.create_rpc(
