@@ -9,9 +9,15 @@ import re
 from enum import Enum
 
 from derp_me import DerpMe
-import commlib.transports.redis as rcomm
 
 
 if __name__ == '__main__':
-    derp = DerpMe(local_broker_params=rcomm.ConnectionParameters(host='localhost', port=6379))
+    transport = 'redis'
+    if transport == 'redis':
+        import commlib.transports.redis as comm
+    elif transport == 'amqp':
+        import commlib.transports.amqp as comm
+
+    derp = DerpMe(broker_params=comm.ConnectionParameters(
+        host='localhost', port=6379), debug=True)
     derp.run_forever()

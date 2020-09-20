@@ -11,11 +11,20 @@ from commlib.node import Node, TransportType
 
 
 def camelcase_to_snakecase(name):
+    """camelcase_to_snakecase.
+    Converts a camelcase string to snakecase.
+
+    Args:
+        name: String
+    """
     s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
     return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
 
 
 class LocalMemType(IntEnum):
+    """LocalMemType.
+    """
+
     REDIS = 1
 
 
@@ -30,17 +39,19 @@ class DerpMe(object):
 
     def __init__(self,
                  local_mem: LocalMemType = LocalMemType.REDIS,
-                 local_broker: TransportType = TransportType.REDIS,
-                 local_broker_params=None,
-                 remote_broker: TransportType = TransportType.AMQP,
-                 remote_broker_params=None,
+                 broker_type: TransportType = TransportType.REDIS,
+                 broker_params=None,
                  list_size: int = 10,
-                 namespace: str = 'device'):
+                 namespace: str = 'device',
+                 debug: bool = False):
         if local_mem == LocalMemType.REDIS:
             from commlib.transports.redis import ConnectionParameters
             self.mem_conn_params = ConnectionParameters()
         self.l_size = list_size
         self.namespace = namespace
+        self._debug = debug
+        self._broker_type = broker_type
+        self._broker_params = broker_params
         self.node_name = camelcase_to_snakecase(self.__class__.__name__)
 
         self._get_uri = '{}.{}.{}'.format(self.namespace, 'derpme', 'get')
@@ -51,64 +62,34 @@ class DerpMe(object):
         self._lset_uri = '{}.{}.{}'.format(self.namespace, 'derpme', 'lset')
         self._flush_uri = '{}.{}.{}'.format(self.namespace, 'derpme', 'flush')
 
-        if local_broker == TransportType.AMQP:
-            import commlib.transports.amqp as comm
-        elif local_broker == TransportType.REDIS:
-            import commlib.transports.redis as comm
-        else:
-            raise TypeError()
-
-        self._local_conn_params = local_broker_params if local_broker_params \
-            is not None else comm.ConnectionParameters()
-
-        self._get_rpc = comm.RPCService(conn_params=self._local_conn_params,
-                                       rpc_name=self._get_uri,
-                                       on_request=self._callback_get)
-        self._set_rpc = comm.RPCService(conn_params=self._local_conn_params,
-                                       rpc_name=self._set_uri,
-                                       on_request=self._callback_set)
-        self._mget_rpc = comm.RPCService(conn_params=self._local_conn_params,
-                                        rpc_name=self._mget_uri,
-                                        on_request=self._callback_mget)
-        self._mset_rpc = comm.RPCService(conn_params=self._local_conn_params,
-                                        rpc_name=self._mset_uri,
-                                        on_request=self._callback_mset)
-        self._lget_rpc = comm.RPCService(conn_params=self._local_conn_params,
-                                        rpc_name=self._lget_uri,
-                                        on_request=self._callback_lget)
-        self._lset_rpc = comm.RPCService(conn_params=self._local_conn_params,
-                                        rpc_name=self._lset_uri,
-                                        on_request=self._callback_lset)
-        self._flush_rpc = comm.RPCService(conn_params=self._local_conn_params,
-                                         rpc_name=self._flush_uri,
-                                         on_request=self._callback_flush)
-
         self.init_redis()
-        self._init_local_endpoints()
+        self._init_endpoints()
 
-    def _init_local_endpoints(self):
-        thing_id = self._local_conn_params.credentials.username
-        self._local_node = Node(
-            self.__class__.__name__, transport_type=TransportType.REDIS,
-            transport_connection_params=self._local_conn_params,
+    def _init_endpoints(self):
+        """_init_endpoints.
+        Initialize remote node and it's interfaces.
+        """
+        thing_id = self._broker_params.credentials.username
+        self._node = Node(
+            self.node_name, transport_type=self._broker_type,
+            transport_connection_params=self._broker_params,
             remote_logger=False,
-            debug=False
+            debug=self._debug
         )
-        self.logger = self._local_node.get_logger()
-
-        self._get_rpc = self._local_node.create_rpc(
+        self.logger = self._node.get_logger()
+        self._get_rpc = self._node.create_rpc(
             rpc_name=self._get_uri, on_request=self._callback_get)
-        self._set_rpc = self._local_node.create_rpc(
+        self._set_rpc = self._node.create_rpc(
             rpc_name=self._set_uri, on_request=self._callback_set)
-        self._lget_rpc = self._local_node.create_rpc(
+        self._lget_rpc = self._node.create_rpc(
             rpc_name=self._lget_uri, on_request=self._callback_lget)
-        self._lset_rpc = self._local_node.create_rpc(
+        self._lset_rpc = self._node.create_rpc(
             rpc_name=self._lset_uri, on_request=self._callback_lset)
-        self._mget_rpc = self._local_node.create_rpc(
+        self._mget_rpc = self._node.create_rpc(
             rpc_name=self._mget_uri, on_request=self._callback_mget)
-        self._mset_rpc = self._local_node.create_rpc(
+        self._mset_rpc = self._node.create_rpc(
             rpc_name=self._mset_uri, on_request=self._callback_mset)
-        self._flush_rpc = self._local_node.create_rpc(
+        self._flush_rpc = self._node.create_rpc(
             rpc_name=self._flush_uri, on_request=self._callback_flush)
         self._get_rpc.run()
         self._set_rpc.run()
@@ -119,6 +100,13 @@ class DerpMe(object):
         self._flush_rpc.run()
 
     def _callback_get(self, msg, meta):
+        """_callback_get.
+        Returns the value of a key.
+
+        Args:
+            msg: Request Message
+            meta: Message Metainformation
+        """
         resp = {
             'status': 1,
             'val': None,
@@ -134,6 +122,13 @@ class DerpMe(object):
         return resp
 
     def _callback_set(self, msg, meta):
+        """_callback_set.
+        Set the value of a key.
+
+        Args:
+            msg: Request Message
+            meta: Message Meta-Information
+        """
         resp = {
             'status': 1,
             'error': ''
@@ -153,6 +148,13 @@ class DerpMe(object):
         return resp
 
     def _callback_mset(self, msg, meta):
+        """_callback_mset.
+        Store Multiple sets of [keys, values]
+
+        Args:
+            msg: Request Message
+            meta: Message Meta-Information
+        """
         resp = {
             'status': 1,
             'error': ''
@@ -175,6 +177,12 @@ class DerpMe(object):
         return resp
 
     def _callback_mget(self, msg, meta):
+        """_callback_mget.
+
+        Args:
+            msg: Request Message
+            meta: Message Meta-Information
+        """
         resp = {
             'status': 1,
             'error': '',
@@ -195,6 +203,13 @@ class DerpMe(object):
         return resp
 
     def _callback_lget(self, msg, meta):
+        """_callback_lget.
+        Modified Redis LGET operation. Returns a list given its key.
+
+        Args:
+            msg: Request Message
+            meta: Message Meta-Information
+        """
         # from: 0 0
         # to:   0 -1
         resp = {
@@ -233,6 +248,13 @@ class DerpMe(object):
         return resp
 
     def _callback_lset(self, msg, meta):
+        """_callback_lset.
+        Modified Redis LSET operation
+
+        Args:
+            msg: Request Message
+            meta: Message Meta-Information
+        """
         resp = {
             'status': 1,
             'error': ''
@@ -254,6 +276,13 @@ class DerpMe(object):
         return resp
 
     def _callback_flush(self, msg, meta):
+        """_callback_flush.
+        Force to flush data currently stored in db.
+
+        Args:
+            msg: Request Message
+            meta: Message Meta-Information
+        """
         resp = {
             'status': 1,
             'error': ''
@@ -267,11 +296,16 @@ class DerpMe(object):
         return resp
 
     def init_redis(self):
+        """init_redis.
+        Initialize redis db instance for data storage.
+        """
         self.redis = redis.Redis(host=self.mem_conn_params.host,
                                  port=self.mem_conn_params.port,
                                  db=self.mem_conn_params.db,
                                  decode_responses=True)
 
     def run_forever(self):
+        """run_forever.
+        """
         while True:
             time.sleep(0.001)

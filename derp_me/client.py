@@ -8,6 +8,13 @@ from .derp_me import TransportType
 class DerpMeClient(object):
     def __init__(self, iface_protocol=TransportType.REDIS,
                  conn_params=None, namespace='device'):
+        """__init__.
+
+        Args:
+            iface_protocol: Interface protocol (REDIS/AMQP)
+            conn_params: Broker Connection Parameters
+            namespace: Global namespace
+        """
         self.namespace = namespace
         self.logger = Logger(namespace=self.__class__.__name__)
 
@@ -45,12 +52,25 @@ class DerpMeClient(object):
                                          rpc_name=self._flush_uri)
 
     def get(self, key):
+        """get.
+        Get value of a key.
+
+        Args:
+            key:
+        """
         req = {
             'key': key
         }
         return self._get_rpc.call(req)
 
     def set(self, key, val):
+        """set.
+        Set the value of a key.
+
+        Args:
+            key:
+            val:
+        """
         req = {
             'key': key,
             'val': val
@@ -58,12 +78,23 @@ class DerpMeClient(object):
         return self._set_rpc.call(req)
 
     def mget(self, key):
+        """mget.
+
+        Args:
+            key:
+        """
         req = {
             'key': key
         }
         return self._mget_rpc.call(req)
 
     def mset(self, keys, vals):
+        """mset.
+
+        Args:
+            keys:
+            vals:
+        """
         req = {
             'keys': keys,
             'vals': vals
@@ -71,6 +102,13 @@ class DerpMeClient(object):
         return self._mset_rpc.call(req)
 
     def lget(self, key, l_from, l_to):
+        """lget.
+
+        Args:
+            key:
+            l_from:
+            l_to:
+        """
         req = {
             'key': key,
             'l_from': l_from,
@@ -79,6 +117,12 @@ class DerpMeClient(object):
         return self._lget_rpc.call(req)
 
     def lset(self, key, vals):
+        """lset.
+
+        Args:
+            key:
+            vals:
+        """
         req = {
             'key': key,
             'vals': vals
@@ -86,4 +130,7 @@ class DerpMeClient(object):
         return self._lset_rpc.call(req)
 
     def flush(self):
+        """flush.
+        Flush data currently stored in db.
+        """
         return self._flush_rpc.call({})
