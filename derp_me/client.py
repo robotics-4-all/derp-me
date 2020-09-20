@@ -51,7 +51,7 @@ class DerpMeClient(object):
         self._flush_rpc = comm.RPCClient(conn_params=self._conn_params,
                                          rpc_name=self._flush_uri)
 
-    def get(self, key):
+    def get(self, key: str):
         """get.
         Get value of a key.
 
@@ -63,7 +63,7 @@ class DerpMeClient(object):
         }
         return self._get_rpc.call(req)
 
-    def set(self, key, val):
+    def set(self, key: str, val):
         """set.
         Set the value of a key.
 
@@ -77,7 +77,7 @@ class DerpMeClient(object):
         }
         return self._set_rpc.call(req)
 
-    def mget(self, key):
+    def mget(self, key: str):
         """mget.
 
         Args:
@@ -88,7 +88,7 @@ class DerpMeClient(object):
         }
         return self._mget_rpc.call(req)
 
-    def mset(self, keys, vals):
+    def mset(self, keys: list, vals: list):
         """mset.
 
         Args:
@@ -101,7 +101,7 @@ class DerpMeClient(object):
         }
         return self._mset_rpc.call(req)
 
-    def lget(self, key, l_from, l_to):
+    def lget(self, key: str, l_from: int, l_to: int):
         """lget.
 
         Args:
@@ -116,7 +116,7 @@ class DerpMeClient(object):
         }
         return self._lget_rpc.call(req)
 
-    def lset(self, key, vals):
+    def lset(self, key: str, vals: list):
         """lset.
 
         Args:
