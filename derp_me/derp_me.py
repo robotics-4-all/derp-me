@@ -122,8 +122,8 @@ class RedisPersistentMem(RuntimeMemory):
         self._redis.set(key, val)
         try:
             self._redis.bgsave()
-        except Exception:
-            pass
+        except Exception as exc:
+            print(exc)
 
     def get(self, key: str):
         val = self._redis.get(key)
@@ -136,8 +136,8 @@ class RedisPersistentMem(RuntimeMemory):
         self._redis.mset(_d)
         try:
             self._redis.bgsave()
-        except Exception:
-            pass
+        except Exception as exc:
+            print(exc)
 
     def mget(self, keys: list):
         vals = self._redis.mget(keys)
@@ -148,8 +148,8 @@ class RedisPersistentMem(RuntimeMemory):
         self._redis.ltrim(key, 0, self.list_size - 1)
         try:
             self._redis.bgsave()
-        except Exception:
-            pass
+        except Exception as exc:
+            print(exc)
 
     def lget(self, key: str, from_idx: int, to_idx: int) -> list:
         r_start = -1 * from_idx
