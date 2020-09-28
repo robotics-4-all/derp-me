@@ -51,7 +51,7 @@ class DerpMeClient(object):
         self._flush_rpc = comm.RPCClient(conn_params=self._conn_params,
                                          rpc_name=self._flush_uri)
 
-    def get(self, key: str):
+    def get(self, key: str, persistent: bool = False):
         """get.
         Get value of a key.
 
@@ -59,11 +59,12 @@ class DerpMeClient(object):
             key:
         """
         req = {
-            'key': key
+            'key': key,
+            'persistent': persistent
         }
         return self._get_rpc.call(req)
 
-    def set(self, key: str, val):
+    def set(self, key: str, val, persistent: bool = False):
         """set.
         Set the value of a key.
 
@@ -73,22 +74,24 @@ class DerpMeClient(object):
         """
         req = {
             'key': key,
-            'val': val
+            'val': val,
+            'persistent': persistent
         }
         return self._set_rpc.call(req)
 
-    def mget(self, key: str):
+    def mget(self, key: str, persistent: bool = False):
         """mget.
 
         Args:
             key:
         """
         req = {
-            'key': key
+            'key': key,
+            'persistent': persistent
         }
         return self._mget_rpc.call(req)
 
-    def mset(self, keys: list, vals: list):
+    def mset(self, keys: list, vals: list, persistent: bool = False):
         """mset.
 
         Args:
@@ -97,11 +100,12 @@ class DerpMeClient(object):
         """
         req = {
             'keys': keys,
-            'vals': vals
+            'vals': vals,
+            'persistent': persistent
         }
         return self._mset_rpc.call(req)
 
-    def lget(self, key: str, l_from: int, l_to: int):
+    def lget(self, key: str, l_from: int, l_to: int, persistent: bool = False):
         """lget.
 
         Args:
@@ -112,11 +116,12 @@ class DerpMeClient(object):
         req = {
             'key': key,
             'l_from': l_from,
-            'l_to': l_to
+            'l_to': l_to,
+            'persistent': persistent
         }
         return self._lget_rpc.call(req)
 
-    def lset(self, key: str, vals: list):
+    def lset(self, key: str, vals: list, persistent: bool = False):
         """lset.
 
         Args:
@@ -125,7 +130,8 @@ class DerpMeClient(object):
         """
         req = {
             'key': key,
-            'vals': vals
+            'vals': vals,
+            'persistent': persistent
         }
         return self._lset_rpc.call(req)
 

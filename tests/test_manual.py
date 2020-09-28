@@ -5,8 +5,6 @@ from derp_me.derp_me import DerpMe
 
 
 if __name__ == '__main__':
-    derp = DerpMe()
-    # derp.run_forever()
     client = DerpMeClient()
     client.flush()
     client.set('k1', 1)
@@ -17,3 +15,5 @@ if __name__ == '__main__':
     client.lset('k2', [3])
     l = client.lget('k2', 0, -2)
     print('Response: {}'.format(l))
+    client.set('k1', 1, True)
+    k = client.get('k1', True)

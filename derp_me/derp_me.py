@@ -28,6 +28,139 @@ class LocalMemType(IntEnum):
     REDIS = 1
 
 
+class Memory:
+    def __init__(self, list_size=10):
+        self.list_size = list_size
+
+    def set(self, key: str, val: str) -> None:
+        raise NotImplementedError()
+
+    def get(self, key: str):
+        raise NotImplementedError()
+
+    def mset(self, keys: list, vals: list) -> None:
+        raise NotImplementedError()
+
+    def mget(self, keys: list):
+        raise NotImplementedError()
+
+    def lset(self, key: str, vals: list) -> None:
+        raise NotImplementedError()
+
+    def lget(self, key: str, from_idx: int, to_idx: int) -> list:
+        raise NotImplementedError()
+
+    def llen(self, key) -> int:
+        raise NotImplementedError()
+
+
+class RuntimeMemory(Memory):
+    def __init__(self, *args, **kwargs):
+        super(RuntimeMemory, self).__init__(*args, **kwargs)
+
+
+class PersistentMemory(Memory):
+    def __init__(self, *args, **kwargs):
+        super(PersistentMemory, self).__init__(*args, **kwargs)
+
+
+class RedisRuntimeMem(RuntimeMemory):
+    def __init__(self, host='localhost', port=6379, db=1, *args, **kwargs):
+        super(RedisRuntimeMem, self).__init__(*args, **kwargs)
+        self._redis = redis.Redis(
+            host=host,
+            port=port,
+            db=db,
+            decode_responses=True
+        )
+
+    def set(self, key: str, val: str) -> None:
+        self._redis.set(key, val)
+
+    def get(self, key: str):
+        val = self._redis.get(key)
+        return val
+
+    def mset(self, keys: list, vals: list) -> None:
+        _d = {}
+        for i in range(len(keys)):
+            _d[keys[i]] = vals[i]
+        self._redis.mset(_d)
+
+    def mget(self, keys: list):
+        vals = self._redis.mget(keys)
+        return vals
+
+    def lset(self, key: str, vals: list) -> None:
+        self._redis.lpush(key, *vals)
+        self._redis.ltrim(key, 0, self.list_size - 1)
+
+    def lget(self, key: str, from_idx: int, to_idx: int) -> list:
+        r_start = -1 * from_idx
+        r_stop = -1 * to_idx
+        res = self._redis.lrange(key, r_start, r_stop)
+        return res
+
+    def llen(self, key: str) -> int:
+        return self._redis.llen(key)
+
+    def flush(self) -> None:
+        self._redis.flushdb()
+
+
+class RedisPersistentMem(RuntimeMemory):
+    def __init__(self, host='localhost', port=6379, db=2, *args, **kwargs):
+        super(RedisPersistentMem, self).__init__(*args, **kwargs)
+        self._redis = redis.Redis(
+            host=host,
+            port=port,
+            db=db,
+            decode_responses=True
+        )
+
+    def set(self, key: str, val: str) -> None:
+        self._redis.set(key, val)
+        try:
+            self._redis.bgsave()
+        except Exception:
+            pass
+
+    def get(self, key: str):
+        val = self._redis.get(key)
+        return val
+
+    def mset(self, keys: list, vals: list) -> None:
+        _d = {}
+        for i in range(len(keys)):
+            _d[keys[i]] = vals[i]
+        self._redis.mset(_d)
+        try:
+            self._redis.bgsave()
+        except Exception:
+            pass
+
+    def mget(self, keys: list):
+        vals = self._redis.mget(keys)
+        return vals
+
+    def lset(self, key: str, vals: list) -> None:
+        self._redis.lpush(key, *vals)
+        self._redis.ltrim(key, 0, self.list_size - 1)
+        try:
+            self._redis.bgsave()
+        except Exception:
+            pass
+
+    def lget(self, key: str, from_idx: int, to_idx: int) -> list:
+        r_start = -1 * from_idx
+        r_stop = -1 * to_idx
+        res = self._redis.lrange(key, r_start, r_stop)
+        return res
+
+    def llen(self, key: str) -> int:
+        return self._redis.llen(key)
+
+
 class DerpMe(object):
     """
 
@@ -38,15 +171,23 @@ class DerpMe(object):
     """
 
     def __init__(self,
-                 local_mem: LocalMemType = LocalMemType.REDIS,
+                 runtime_mem: LocalMemType = LocalMemType.REDIS,
+                 persistent_mem: LocalMemType = LocalMemType.REDIS,
                  broker_type: TransportType = TransportType.REDIS,
                  broker_params=None,
                  list_size: int = 10,
                  namespace: str = 'device',
                  debug: bool = False):
-        if local_mem == LocalMemType.REDIS:
-            from commlib.transports.redis import ConnectionParameters
-            self.mem_conn_params = ConnectionParameters()
+        """__init__.
+
+        Args:
+            local_mem (LocalMemType): local_mem
+            broker_type (TransportType): broker_type
+            broker_params:
+            list_size (int): list_size
+            namespace (str): namespace
+            debug (bool): debug
+        """
         self.l_size = list_size
         self.namespace = namespace
         self._debug = debug
@@ -62,7 +203,14 @@ class DerpMe(object):
         self._lset_uri = '{}.{}.{}'.format(self.namespace, 'derpme', 'lset')
         self._flush_uri = '{}.{}.{}'.format(self.namespace, 'derpme', 'flush')
 
-        self.init_redis()
+        if runtime_mem == LocalMemType.REDIS:
+            self._runtime_mem = RedisRuntimeMem()
+        else:
+            raise ValueError()
+        if persistent_mem == LocalMemType.REDIS:
+            self._persistent_mem = RedisPersistentMem()
+        else:
+            raise ValueError()
         self._init_endpoints()
 
     def _init_endpoints(self):
@@ -107,6 +255,7 @@ class DerpMe(object):
             msg: Request Message
             meta: Message Metainformation
         """
+        persistent = False
         resp = {
             'status': 1,
             'val': None,
@@ -115,9 +264,16 @@ class DerpMe(object):
         if not 'key' in msg:
             resp['error'] = 'Missing <key> parameter'
             resp['status'] = 0
+        if 'persistent' in msg:
+            if msg['persistent']:
+                persistent = True
         key = msg['key']
-        self.logger.debug('GET <{}>'.format(key))
-        val = self.redis.get(key)
+        if persistent:
+            self.logger.debug('[Persistent Mem]: GET <{}>'.format(key))
+            val = self._persistent_mem.get(key)
+        else:
+            self.logger.debug('[Runtime Mem]: GET <{}>'.format(key))
+            val = self._runtime_mem.get(key)
         resp['val'] = val
         return resp
 
@@ -129,6 +285,7 @@ class DerpMe(object):
             msg: Request Message
             meta: Message Meta-Information
         """
+        persistent = False
         resp = {
             'status': 1,
             'error': ''
@@ -141,10 +298,21 @@ class DerpMe(object):
             resp['status'] = 0
             resp['error'] = 'Missing <key> parameter'
             return resp
+        if 'persistent' in msg:
+            if msg['persistent']:
+                persistent = True
         key = msg['key']
         val = msg['val']
-        self.logger.debug('SET <{},{}>'.format(key, val))
-        self.redis.set(key, val)
+        if persistent:
+            self.logger.debug('[Persistent Mem]: SET <{},{}>'.format(key, val))
+            self._persistent_mem.set(key, val)
+            try:
+                self._persistent_mem.bgsave()
+            except Exception:
+                pass
+        else:
+            self.logger.debug('[Runtime Mem]: SET <{},{}>'.format(key, val))
+            self._runtime_mem.set(key, val)
         return resp
 
     def _callback_mset(self, msg, meta):
@@ -155,6 +323,7 @@ class DerpMe(object):
             msg: Request Message
             meta: Message Meta-Information
         """
+        persistent = False
         resp = {
             'status': 1,
             'error': ''
@@ -167,13 +336,24 @@ class DerpMe(object):
             resp['status'] = 0
             resp['error'] = 'Missing <vals> parameter'
             return resp
+        if 'persistent' in msg:
+            if msg['persistent']:
+                persistent = True
         keys = msg['keys']
         vals = msg['vals']
-        self.logger.debug('MSET <{},{}>'.format(keys, vals))
         _d = {}
         for i in range(len(keys)):
             _d[keys[i]] = vals[i]
-        self.redis.mset(_d)
+        if persistent:
+            self.logger.debug('[Persistent Mem]: MSET <{},{}>'.format(keys, vals))
+            self._persistent_mem.mset(_d)
+            try:
+                self._persistent_mem.bgsave()
+            except Exception:
+                pass
+        else:
+            self.logger.debug('[Runtime Mem]: MSET <{},{}>'.format(keys, vals))
+            self._runtime_mem.mset(_d)
         return resp
 
     def _callback_mget(self, msg, meta):
@@ -183,6 +363,7 @@ class DerpMe(object):
             msg: Request Message
             meta: Message Meta-Information
         """
+        persistent = False
         resp = {
             'status': 1,
             'error': '',
@@ -192,14 +373,17 @@ class DerpMe(object):
             resp['status'] = 0
             resp['error'] = 'Missing <keys> parameter'
             return resp
+        if 'persistent' in msg:
+            if msg['persistent']:
+                persistent = True
         keys = msg['keys']
-        self.logger.debug('MGET <{}>'.format(keys))
-        try:
-            vals = self.redis.mget(keys)
-            resp['vals'] = vals
-        except Exception as e:
-            resp['status'] = 0
-            resp['error'] = str(e)
+        if persistent:
+            self.logger.debug('[Persistent Mem]: MGET <{}>'.format(keys))
+            vals = self._persistent_mem.mget(keys)
+        else:
+            self.logger.debug('[Runtime Mem]: MGET <{}>'.format(keys))
+            vals = self._runtime_mem.mget(keys)
+        resp['vals'] = vals
         return resp
 
     def _callback_lget(self, msg, meta):
@@ -212,6 +396,7 @@ class DerpMe(object):
         """
         # from: 0 0
         # to:   0 -1
+        persistent = False
         resp = {
             'status': 1,
             'error': '',
@@ -229,20 +414,26 @@ class DerpMe(object):
             resp['status'] = 0
             resp['error'] = 'Missing <l_to> parameter'
             return resp
+        if 'persistent' in msg:
+            if msg['persistent']:
+                persistent = True
         _from = msg['l_from']
         _to = msg['l_to']
         _key = msg['key']
 
-        if self.redis.llen(_key) == 0:
+        if self._runtime_mem.llen(_key) == 0:
             # Check if list exists: https://redis.io/commands/llen
             resp['status'] = 0
             resp['error'] = 'List <{}> does not exist'.format(_key)
             return resp
-        # Reverse indexing
-        r_start = -1 * _from
-        r_stop = -1 * _to
-        self.logger.debug('LGET <{},[{},{}]>'.format(_key, _from, _to))
-        res = self.redis.lrange(_key, r_start, r_stop)
+        if persistent:
+            self.logger.debug(
+                '[Persistent Mem]: LGET <{},[{},{}]>'.format(_key, _from, _to))
+            res = self._persistent_mem.lget(_key, _from, _to)
+        else:
+            self.logger.debug(
+                '[Runtime Mem]: LGET <{},[{},{}]>'.format(_key, _from, _to))
+            res = self._runtime_mem.lget(_key, _from, _to)
         res = [json.loads(x) for x in res]
         resp['val'] = res
         return resp
@@ -255,6 +446,7 @@ class DerpMe(object):
             msg: Request Message
             meta: Message Meta-Information
         """
+        persistent = False
         resp = {
             'status': 1,
             'error': ''
@@ -267,12 +459,19 @@ class DerpMe(object):
             resp['status'] = 0
             resp['error'] = 'Missing <vals> parameter'
             return resp
+        if 'persistent' in msg:
+            if msg['persistent']:
+                persistent = True
         key = msg['key']
         vals = msg['vals']
         vals = [json.dumps(x) for x in vals]
-        self.logger.debug('LSET <{},{}>'.format(key, vals))
-        self.redis.lpush(key, *vals)
-        self.redis.ltrim(key, 0, self.l_size - 1)
+        if persistent:
+            self.logger.debug(
+                '[Persistent Mem]: LSET <{},{}>'.format(key, vals))
+            self._persistent_mem.lset(key, vals)
+        else:
+            self.logger.debug('[Runtime Mem]: LSET <{},{}>'.format(key, vals))
+            self._runtime_mem.lset(key, vals)
         return resp
 
     def _callback_flush(self, msg, meta):
@@ -289,20 +488,12 @@ class DerpMe(object):
         }
         self.logger.debug('Flushing db...')
         try:
-            self.redis.flushdb()
+            self._runtime_mem.flush()
         except Exception as exc:
+            print(exc)
             resp['status'] = 0
             resp['error'] = str(exc)
         return resp
-
-    def init_redis(self):
-        """init_redis.
-        Initialize redis db instance for data storage.
-        """
-        self.redis = redis.Redis(host=self.mem_conn_params.host,
-                                 port=self.mem_conn_params.port,
-                                 db=self.mem_conn_params.db,
-                                 decode_responses=True)
 
     def run_forever(self):
         """run_forever.
