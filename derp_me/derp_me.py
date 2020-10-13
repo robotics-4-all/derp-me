@@ -108,7 +108,7 @@ class RedisRuntimeMem(RuntimeMemory):
         self._redis.flushdb()
 
 
-class RedisPersistentMem(RuntimeMemory):
+class RedisPersistentMem(PersistentMemory):
     def __init__(self, host='localhost', port=6379, db=2, *args, **kwargs):
         super(RedisPersistentMem, self).__init__(*args, **kwargs)
         self._redis = redis.Redis(
