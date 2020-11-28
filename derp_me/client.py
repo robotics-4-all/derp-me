@@ -1,13 +1,15 @@
-import commlib.transports.redis as rcomm
-import commlib.transports.amqp as acomm
+from typing import Any
+
 from commlib.logger import Logger
 
-from .derp_me import TransportType
+from commlib.endpoints import TransportType
 
 
 class DerpMeClient(object):
-    def __init__(self, iface_protocol=TransportType.REDIS,
-                 conn_params=None, namespace='device'):
+    def __init__(self,
+                 iface_protocol: TransportType = TransportType.REDIS,
+                 conn_params: Any = None,
+                 namespace: str = 'device'):
         """__init__.
 
         Args:
@@ -19,9 +21,9 @@ class DerpMeClient(object):
         self.logger = Logger(namespace=self.__class__.__name__)
 
         if iface_protocol == TransportType.AMQP:
-            comm = acomm
+            import commlib.transports.amqp as comm
         elif iface_protocol == TransportType.REDIS:
-            comm = rcomm
+            import commlib.transports.redis as comm
         else:
             raise TypeError()
         self._conn_params = conn_params if conn_params \
@@ -34,7 +36,6 @@ class DerpMeClient(object):
         self._lget_uri = '{}.{}.{}'.format(self.namespace, 'derpme', 'lget')
         self._lset_uri = '{}.{}.{}'.format(self.namespace, 'derpme', 'lset')
         self._flush_uri = '{}.{}.{}'.format(self.namespace, 'derpme', 'flush')
-
 
         self._get_rpc = comm.RPCClient(conn_params=self._conn_params,
                                        rpc_name=self._get_uri)
@@ -56,7 +57,8 @@ class DerpMeClient(object):
         Get value of a key.
 
         Args:
-            key:
+            key (str): key
+            persistent (bool): persistent
         """
         req = {
             'key': key,
@@ -64,7 +66,7 @@ class DerpMeClient(object):
         }
         return self._get_rpc.call(req)
 
-    def set(self, key: str, val, persistent: bool = False):
+    def set(self, key: str, val: Any, persistent: bool = False):
         """set.
         Set the value of a key.
 
@@ -83,7 +85,8 @@ class DerpMeClient(object):
         """mget.
 
         Args:
-            key:
+            key (str): key
+            persistent (bool): persistent
         """
         req = {
             'key': key,
@@ -95,8 +98,9 @@ class DerpMeClient(object):
         """mset.
 
         Args:
-            keys:
-            vals:
+            keys (list): keys
+            vals (list): vals
+            persistent (bool): persistent
         """
         req = {
             'keys': keys,
@@ -109,9 +113,10 @@ class DerpMeClient(object):
         """lget.
 
         Args:
-            key:
-            l_from:
-            l_to:
+            key (str): key
+            l_from (int): l_from
+            l_to (int): l_to
+            persistent (bool): persistent
         """
         req = {
             'key': key,
@@ -125,8 +130,9 @@ class DerpMeClient(object):
         """lset.
 
         Args:
-            key:
-            vals:
+            key (str): key
+            vals (list): vals
+            persistent (bool): persistent
         """
         req = {
             'key': key,

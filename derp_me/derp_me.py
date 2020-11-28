@@ -24,11 +24,14 @@ def camelcase_to_snakecase(name):
 class LocalMemType(IntEnum):
     """LocalMemType.
     """
-
     REDIS = 1
 
 
 class Memory:
+    """Memory.
+    Abstract Memory Class.
+    """
+
     def __init__(self, list_size=10):
         self.list_size = list_size
 
@@ -109,7 +112,14 @@ class RedisRuntimeMem(RuntimeMemory):
 
 
 class RedisPersistentMem(PersistentMemory):
-    def __init__(self, host='localhost', port=6379, db=2, *args, **kwargs):
+    """RedisPersistentMem.
+    """
+
+    def __init__(self,
+                 host: str = 'localhost',
+                 port: int = 6379,
+                 db: int = 2,
+                 *args, **kwargs):
         super(RedisPersistentMem, self).__init__(*args, **kwargs)
         self._redis = redis.Redis(
             host=host,
@@ -119,6 +129,15 @@ class RedisPersistentMem(PersistentMemory):
         )
 
     def set(self, key: str, val: str) -> None:
+        """set.
+
+        Args:
+            key (str): key
+            val (str): val
+
+        Returns:
+            None:
+        """
         self._redis.set(key, val)
         try:
             self._redis.bgsave()
@@ -126,10 +145,24 @@ class RedisPersistentMem(PersistentMemory):
             print(exc)
 
     def get(self, key: str):
+        """get.
+
+        Args:
+            key (str): key
+        """
         val = self._redis.get(key)
         return val
 
     def mset(self, keys: list, vals: list) -> None:
+        """mset.
+
+        Args:
+            keys (list): keys
+            vals (list): vals
+
+        Returns:
+            None:
+        """
         _d = {}
         for i in range(len(keys)):
             _d[keys[i]] = vals[i]
@@ -140,10 +173,24 @@ class RedisPersistentMem(PersistentMemory):
             print(exc)
 
     def mget(self, keys: list):
+        """mget.
+
+        Args:
+            keys (list): keys
+        """
         vals = self._redis.mget(keys)
         return vals
 
     def lset(self, key: str, vals: list) -> None:
+        """lset.
+
+        Args:
+            key (str): key
+            vals (list): vals
+
+        Returns:
+            None:
+        """
         self._redis.lpush(key, *vals)
         self._redis.ltrim(key, 0, self.list_size - 1)
         try:
@@ -152,12 +199,30 @@ class RedisPersistentMem(PersistentMemory):
             print(exc)
 
     def lget(self, key: str, from_idx: int, to_idx: int) -> list:
+        """lget.
+
+        Args:
+            key (str): key
+            from_idx (int): from_idx
+            to_idx (int): to_idx
+
+        Returns:
+            list:
+        """
         r_start = -1 * from_idx
         r_stop = -1 * to_idx
         res = self._redis.lrange(key, r_start, r_stop)
         return res
 
     def llen(self, key: str) -> int:
+        """llen.
+
+        Args:
+            key (str): key
+
+        Returns:
+            int:
+        """
         return self._redis.llen(key)
 
 
