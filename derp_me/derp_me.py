@@ -376,7 +376,9 @@ class DerpMe(object):
             except Exception:
                 pass
         else:
-            self.logger.debug('[Runtime Mem]: SET <{},{}>'.format(key, val))
+            sval = str(val)
+            sval = sval if len(sval) < 200 else sval[:200] + "..."
+            self.logger.debug('[Runtime Mem]: SET <{},{}>'.format(key, sval))
             self._runtime_mem.set(key, val)
         return resp
 
@@ -417,7 +419,9 @@ class DerpMe(object):
             except Exception:
                 pass
         else:
-            self.logger.debug('[Runtime Mem]: MSET <{},{}>'.format(keys, vals))
+            sval = str(vals)
+            sval = sval if len(sval) < 200 else sval[:200] + "..."
+            self.logger.debug('[Runtime Mem]: MSET <{},{}>'.format(keys, sval))
             self._runtime_mem.mset(_d)
         return resp
 
@@ -535,7 +539,9 @@ class DerpMe(object):
                 '[Persistent Mem]: LSET <{},{}>'.format(key, vals))
             self._persistent_mem.lset(key, vals)
         else:
-            self.logger.debug('[Runtime Mem]: LSET <{},{}>'.format(key, vals))
+            sval = str(vals)
+            sval = sval if len(sval) < 200 else sval[:200] + "..."
+            self.logger.debug('[Runtime Mem]: LSET <{},{}>'.format(key, sval))
             self._runtime_mem.lset(key, vals)
         return resp
 
