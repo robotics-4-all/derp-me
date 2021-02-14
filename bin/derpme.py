@@ -51,7 +51,6 @@ if __name__ == '__main__':
         host=broker_host,
         port=broker_port
     )
-    print(bparams.host)
 
     derp = DerpMe(broker_params=bparams, debug=True)
     derp.run_forever()
