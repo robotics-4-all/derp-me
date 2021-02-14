@@ -6,7 +6,7 @@ import time
 import re
 from enum import IntEnum
 
-from commlib.logger import RemoteLogger
+from commlib.logger import Logger
 from commlib.node import Node, TransportType
 
 
