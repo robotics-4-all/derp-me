@@ -12,6 +12,26 @@ Simply execute:
 pip install .
 ```
 
+## Start derpme server
+
+derp_me
+
+## Environmental Variables
+
+## Run in Docker
+
+First build the image:
+
+```
+./build_docker.sh
+```
+
+and then execute
+
+```
+docker run -it --net host derpme
+```
+
 ## Available Services
 
 ### Get

@@ -34,7 +34,7 @@ setup(
     description="DEvice Remote Persistent MEmory",
     entry_points={
         'console_scripts': [
-            'derp_me=derp_me.__main__:main',
+            'derpme-server=derp_me.__main__:main',
         ],
     },
     install_requires=requirements,

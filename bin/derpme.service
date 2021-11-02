@@ -6,8 +6,7 @@ After=multi-user.target network.target redis-server.service
 [Service]
 User=pi
 Type=idle
-ExecStart=/usr/bin/python3 -u derpme.py
-WorkingDirectory=/home/pi/elsa-packages/derp-me/bin
+ExecStart=derp_me
 StandardOutput=inherit
 StandardError=inherit
 Restart=always
