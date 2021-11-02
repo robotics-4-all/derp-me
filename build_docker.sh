@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
 
-docker build -t derpme .
+docker build -t derpme-server .

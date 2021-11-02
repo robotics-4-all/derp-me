@@ -6,7 +6,8 @@ After=multi-user.target network.target redis-server.service
 [Service]
 User=klpanagi
 Type=idle
-ExecStart=/usr/bin/derpme-server
+ExecStart=/usr/bin/docker run --rm --name derpme-server --net host derpme-server
+ExecStop=/usr/bin/docker container rm derpme-server --force
 StandardOutput=inherit
 StandardError=inherit
 Restart=always

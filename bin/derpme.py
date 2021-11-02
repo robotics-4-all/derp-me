@@ -46,6 +46,8 @@ if __name__ == '__main__':
         import commlib.transports.mqtt as comm
         if broker_port is None:
             broker_port = 1883
+    else:
+        raise ValueError('Not a valid broker_type')
 
     bparams = comm.ConnectionParameters(
         host=broker_host,
