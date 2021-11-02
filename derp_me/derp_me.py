@@ -68,7 +68,12 @@ class PersistentMemory(Memory):
 
 
 class RedisRuntimeMem(RuntimeMemory):
-    def __init__(self, host='localhost', port=6379, db=1, *args, **kwargs):
+    def __init__(self,
+                 host='localhost',
+                 port=6379,
+                 db=1,
+                 *args,
+                 **kwargs) -> None:
         super(RedisRuntimeMem, self).__init__(*args, **kwargs)
         self._redis = redis.Redis(
             host=host,
@@ -241,7 +246,7 @@ class DerpMe(object):
                  broker_type: TransportType = TransportType.REDIS,
                  broker_params=None,
                  list_size: int = 10,
-                 namespace: str = 'device',
+                 namespace: str = None,
                  debug: bool = False):
         """__init__.
 
@@ -260,13 +265,16 @@ class DerpMe(object):
         self._broker_params = broker_params
         self.node_name = camelcase_to_snakecase(self.__class__.__name__)
 
-        self._get_uri = '{}.{}.{}'.format(self.namespace, 'derpme', 'get')
-        self._set_uri = '{}.{}.{}'.format(self.namespace, 'derpme', 'set')
-        self._mget_uri = '{}.{}.{}'.format(self.namespace, 'derpme', 'mget')
-        self._mset_uri = '{}.{}.{}'.format(self.namespace, 'derpme', 'mset')
-        self._lget_uri = '{}.{}.{}'.format(self.namespace, 'derpme', 'lget')
-        self._lset_uri = '{}.{}.{}'.format(self.namespace, 'derpme', 'lset')
-        self._flush_uri = '{}.{}.{}'.format(self.namespace, 'derpme', 'flush')
+        if self.namespace is None:
+            self.namespace = 'derpme'
+
+        self._get_uri = f'{self.namespace}.get'
+        self._set_uri = f'{self.namespace}.set'
+        self._mget_uri = f'{self.namespace}.mget'
+        self._mset_uri = f'{self.namespace}.mset'
+        self._lget_uri = f'{self.namespace}.lget'
+        self._lset_uri = f'{self.namespace}.lset'
+        self._flush_uri = f'{self.namespace}.flush'
 
         if runtime_mem == LocalMemType.REDIS:
             self._runtime_mem = RedisRuntimeMem()
@@ -282,9 +290,9 @@ class DerpMe(object):
         """_init_endpoints.
         Initialize remote node and it's interfaces.
         """
-        thing_id = self._broker_params.credentials.username
         self._node = Node(
-            self.node_name, transport_type=self._broker_type,
+            self.node_name,
+            transport_type=self._broker_type,
             transport_connection_params=self._broker_params,
             remote_logger=False,
             debug=self._debug
