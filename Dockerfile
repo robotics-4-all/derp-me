@@ -18,4 +18,4 @@ ENV DERPME_BROKER_PORT 6379
 ENV DERPME_BROKER_USERNAME ""
 ENV DERPME_BROKER_PASSWORD ""
 
-CMD ["python", "-u", "derpme.py"]
+CMD ["derp_me"]
