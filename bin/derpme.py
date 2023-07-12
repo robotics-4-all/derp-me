@@ -19,5 +19,5 @@ if __name__ == '__main__':
         import commlib.transports.amqp as comm
 
     derp = DerpMe(broker_params=comm.ConnectionParameters(
-        host='localhost', port=6379), debug=True)
+        host='tektrain-redis', port=6379), debug=True)
     derp.run_forever()
