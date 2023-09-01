@@ -1,11 +1,12 @@
 FROM python:3.7
 
+
 RUN pip install redis paho-mqtt pika ujson
 
 COPY ./commlib-py /commlib
 RUN cd /commlib && pip install .
 
-COPY . /derpme
+COPY . /derpme 
 
 RUN cd /derpme && pip install .
 
