@@ -65,7 +65,7 @@ class PersistentMemory(Memory):
 
 
 class RedisRuntimeMem(RuntimeMemory):
-    def __init__(self, host='localhost', port=6379, db=1, *args, **kwargs):
+    def __init__(self, host='tektrain-redis', port=6379, db=1, *args, **kwargs):
         super(RedisRuntimeMem, self).__init__(*args, **kwargs)
         self._redis = redis.Redis(
             host=host,
@@ -109,7 +109,7 @@ class RedisRuntimeMem(RuntimeMemory):
 
 
 class RedisPersistentMem(PersistentMemory):
-    def __init__(self, host='localhost', port=6379, db=2, *args, **kwargs):
+    def __init__(self, host='tektrain-redis', port=6379, db=2, *args, **kwargs):
         super(RedisPersistentMem, self).__init__(*args, **kwargs)
         self._redis = redis.Redis(
             host=host,
